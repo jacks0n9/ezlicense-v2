@@ -15,11 +15,18 @@ import (
 type clientLicenseProgram struct {
 	PublicKey    rsa.PublicKey
 	TimeVerifier TimeVerifier
+	// This function will only be called once and the expiration check cycle will stop after it is called.
+	// This is mostly meant for applications that run continuously
+	// Disabled by default. Set the onexpire function to make the cycle actually work
+	OnExpire                func(LicenseData)
+	ExpirationCheckInterval time.Duration
+	//When this fail count is reached, onexpire is called. Set a higher value for higher leniency.
+	AllowedFail int
 }
 
 // An interface representing a type that can tell if the given time has passed yet
 type TimeVerifier interface {
-	VerifyTime(timeNum int64) error
+	VerifyTime(timeNum time.Time) error
 }
 type httpTimeVerifier struct {
 	Url string
@@ -40,11 +47,14 @@ func NewDefaultTimeVerifier() TimeVerifier {
 // Create a license program for the client
 func NewClientLicenseProgram(publicKey rsa.PublicKey, timeVerifier TimeVerifier) clientLicenseProgram {
 	return clientLicenseProgram{
-		PublicKey:    publicKey,
-		TimeVerifier: timeVerifier,
+		PublicKey:               publicKey,
+		TimeVerifier:            timeVerifier,
+		AllowedFail:             1,
+		ExpirationCheckInterval: time.Minute,
+		OnExpire:                nil,
 	}
 }
-func (htv httpTimeVerifier) VerifyTime(timeNum int64) error {
+func (htv httpTimeVerifier) VerifyTime(timeNum time.Time) error {
 	resp, err := http.Get(htv.Url)
 	if err != nil {
 		return err
@@ -54,7 +64,7 @@ func (htv httpTimeVerifier) VerifyTime(timeNum int64) error {
 	if err != nil {
 		return err
 	}
-	if parsed.After(time.Unix(timeNum, 0)) {
+	if parsed.After(timeNum) {
 		return errors.New("expired license")
 	}
 	return nil
@@ -62,6 +72,7 @@ func (htv httpTimeVerifier) VerifyTime(timeNum int64) error {
 
 // Checks if a license is signed correctly and not expired
 // Returns an error if the license fails to verify
+// Start the expiration check cycle
 func (clp clientLicenseProgram) VerifyLicense(license string) (*LicenseData, error) {
 	block, _ := pem.Decode([]byte(license))
 	licenseDataBytes := block.Bytes
@@ -81,9 +92,30 @@ func (clp clientLicenseProgram) VerifyLicense(license string) (*LicenseData, err
 	if err != nil {
 		return nil, err
 	}
-	if licenseData.Expires == -1 {
+	if licenseData.Expires.IsZero() {
 		return &licenseData, nil
 	}
 	err = clp.TimeVerifier.VerifyTime(licenseData.Expires)
-	return &licenseData, err
+	if err != nil {
+		return nil, err
+	}
+	if clp.OnExpire != nil {
+		go clp.startExpirationCheckCycle(licenseData)
+	}
+	return &licenseData, nil
+}
+
+func (clp clientLicenseProgram) startExpirationCheckCycle(data LicenseData) {
+	failCount := 0
+	ticker := time.NewTicker(clp.ExpirationCheckInterval)
+	for range ticker.C {
+		err := clp.TimeVerifier.VerifyTime(data.Expires)
+		if err != nil {
+			failCount++
+		}
+		if failCount >= clp.AllowedFail {
+			clp.OnExpire(data)
+			return
+		}
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"time"
 )
 
 func toBase64Json(data interface{}) (string, error) {
@@ -65,7 +66,7 @@ func ExportPrivateKey(private rsa.PrivateKey) string {
 
 // The useful data of a license, decoded and without a signature
 type LicenseData struct {
-	Expires        int64                  `json:"expires"`
+	Expires        time.Time              `json:"expires"`
 	AdditionalData map[string]interface{} `json:"additional_data"`
 }
 

@@ -86,7 +86,13 @@ SmZBSlpZaFFyZHVOQkE9PSJ9
 // Also will give you the additional data that you added earlier
 data,err:=prog.VerifyLicense(EXAMPLE_LICENSE)
 ```
-
+### Continuous license expriation verification checks, in a goroutine while your app is running, if the license is expired, instead of just checking when verifylicense is called
+```go
+program.ExpirationCheckInterval=time.Second*30
+program.OnExpire=func(data ez.LicenseData){
+    fmt.Println("Your license is expired")
+}
+```
 That's all you need to easily protect your app!
 
  Keep in mind that with some intermediate code reverse-engineering skills, someone skill could use your app without a license e.g. by removing the code that checks your license or replacing the public key with their own.

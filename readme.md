@@ -15,23 +15,23 @@ For time-based license verification, EzLicense can take advantage of the "Date" 
 ## Parts
 There are two main parts in the ezlicense project, the license generator and the license validator.
 ## License Generator
-### Before you generate a new license, you must generate an admin license program first, which contains your private key as well as information for the license header. For now, you must do this using code, but I may release a command line utility for easy license management and distribution soon.
+### Before you generate a new license, you must generate an admin license program first, which contains your private key as well as information for the license header. As a design decision, you must write your own code to generate the license
 ```go
 package main
 
 import (
-    "github.com/jacks0n9/ezlicense"
+    ez "github.com/jacks0n9/ezlicense-v2"
 )
 func main(){
-    program,err:=ezlicense.NewAdminLicenseProgram("EXAMPLE LICENSE NAME",2048)
+    program,err:=ez.NewAdminLicenseProgram("EXAMPLE LICENSE NAME",2048)
     // Make sure to save this for later
-    key:=ezlicense.ExportPrivateKey(program.PrivateKey)
+    key:=ez.ExportPrivateKey(program.PrivateKey)
 }
 ```
 ### To generate a license with the program:
 ```go
 import "time"
-license,err:=program.GenerateLicense(ezlicense.LicenseData{
+license,err:=program.GenerateLicense(ez.LicenseData{
     // Make license expire one day from now
     Expires: time.Now().Unix() + (int64(time.Hour.Seconds()) * 24),
     // You can set any arbitrary data
@@ -60,9 +60,9 @@ VelZYSXtspd9CTGzWiSCD/b+AP/pCupqPQIDAQAB
 
 func main(){
     // Use our utility functions to easily read a pem key
-    loaded,err:=ezlicense.ReadPemPublicKey(EXAMPLE_PUB_KEY)
+    loaded,err:=ez.ReadPemPublicKey(EXAMPLE_PUB_KEY)
     // A time verifier is responsible for checking if the expiration date is correct
-    prog:=client.NewClientLicenseProgram(&loaded,NewDefaultTimeVerifier())
+    prog:=client.NewClientLicenseProgram(&loaded,ez.NewDefaultTimeVerifier())
 }
 ```
 

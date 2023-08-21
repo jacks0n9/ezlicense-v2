@@ -15,7 +15,7 @@ For time-based license verification, EzLicense can take advantage of the "Date" 
 ## Parts
 There are two main parts in the ezlicense project, the license generator and the license validator.
 ## License Generator
-### Before you generate a new license, you must generate an admin license program first, which contains your private key as well as information for the license header. As a design decision, you must write your own code to generate the license
+### Before you generate a new license, you must generate an admin license program first, which contains your private key as well as information for the license header. As a design decision, you must write your own code to generate the license.
 ```go
 package main
 
